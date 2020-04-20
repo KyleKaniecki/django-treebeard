@@ -81,7 +81,7 @@ class Node(models.Model):
                     # Set the node data to the obj
                     node_data[key] = obj
                     # Save the object we just got to cache
-                    foreign_key["cache"][str(node_data[key])] = obj
+                    foreign_keys[key]["cache"][str(node_data[key])] = obj
 
     @classmethod
     def load_bulk(cls, bulk_data, parent=None, keep_ids=False):
