@@ -68,7 +68,7 @@ class Node(models.Model):
         """
         for key in foreign_keys.keys():
             if key in node_data:
-                foreign_key = foreign_key[key]
+                foreign_key = foreign_keys[key]
                 cached_obj = foreign_key["cache"].get(str(node_data[key]))
                 # If we have a cached object in the foreignkeys dict
                 if cached_obj:
