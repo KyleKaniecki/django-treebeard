@@ -1,16 +1,14 @@
 """Models and base API"""
 
+from treebeard.exceptions import InvalidPosition, MissingNodeOrderBy
+from django.db import models, transaction, router, connections
+from django.db.models import Q
+import django
 import sys
 import operator
 
 if sys.version_info >= (3, 0):
     from functools import reduce
-
-import django
-from django.db.models import Q
-from django.db import models, transaction, router, connections
-
-from treebeard.exceptions import InvalidPosition, MissingNodeOrderBy
 
 
 class Node(models.Model):
@@ -51,9 +49,15 @@ class Node(models.Model):
                 field.name != 'parent'
             ):
                 if django.VERSION >= (1, 9):
-                    foreign_keys[field.name] = field.remote_field.model
+                    foreign_keys[field.name] = {
+                        "model": field.remote_field.model,
+                        "cache": {}
+                    }
                 else:
-                    foreign_keys[field.name] = field.rel.to
+                    foreign_keys[field.name] = {
+                        "model": field.rel.to,
+                        "cache": {}
+                    }
         return foreign_keys
 
     @classmethod
@@ -64,8 +68,20 @@ class Node(models.Model):
         """
         for key in foreign_keys.keys():
             if key in node_data:
-                node_data[key] = foreign_keys[key].objects.get(
-                    pk=node_data[key])
+                foreign_key = foreign_key[key]
+                cached_obj = foreign_key["cache"].get(str(node_data[key]))
+                # If we have a cached object in the foreignkeys dict
+                if cached_obj:
+                    node_data[key] = cached_obj
+                else:
+                    # retreive the object from the database
+                    obj = foreign_key["model"].objects.get(
+                        pk=node_data[key]
+                    )
+                    # Set the node data to the obj
+                    node_data[key] = obj
+                    # Save the object we just got to cache
+                    foreign_key["cache"][str(node_data[key])] = obj
 
     @classmethod
     def load_bulk(cls, bulk_data, parent=None, keep_ids=False):
